@@ -110,9 +110,9 @@ class Run:
 class AutoRun:
     @staticmethod
     def enter(boy, e):
-        if boy.action == 3:  # 오른쪽으로 RUN
+        if boy.action == 1 or boy.action == 3:  # 오른쪽으로 RUN
             boy.dir, boy.action = 1, 1
-        elif boy.action == 1:  # 왼쪽으로 RUN
+        elif boy.action == 0 or boy.action == 2:  # 왼쪽으로 RUN
             boy.dir, boy.action = -1, 0
         boy.Run_time = get_time()
 
@@ -146,7 +146,7 @@ class StateMachine:
             Idle: {right_down: Run, left_down: Run, left_up: Run, right_up: Run, time_out: Sleep, A_down: AutoRun},
             Run: {right_down: Idle, left_down: Idle, right_up: Idle, left_up: Idle},
             Sleep: {right_down: Run, left_down: Run, right_up: Run, left_up: Run, space_down: Idle},
-            AutoRun: {time_out: Idle}
+            AutoRun: {time_out: Idle, left_down: Run, right_down: Run}
         }
 
     def handle_event(self, e):
