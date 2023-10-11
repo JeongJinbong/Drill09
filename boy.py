@@ -118,13 +118,17 @@ class AutoRun:
 
     @staticmethod
     def exit(boy, e):
-        pass
+        boy.y= 90
 
     @staticmethod
     def do(boy):
         boy.frame = (boy.frame + 1) % 8
         boy.x += boy.dir * 10
         boy.y = 120
+        if boy.x > 750:
+            boy.dir, boy.action = -1, 0
+        elif boy.x < 50:
+            boy.dir, boy.action = 1, 1
         if get_time() - boy.wait_time > 5:
             boy.state_machine.handle_event(('TIME_OUT', 0))
         pass
