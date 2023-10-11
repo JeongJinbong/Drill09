@@ -1,16 +1,19 @@
 # 이것은 각 상태들을 객체로 구현한 것임.
 
-from pico2d import load_image, SDL_KEYDOWN, SDLK_SPACE, get_time
+from pico2d import load_image, SDL_KEYDOWN, SDLK_LEFT, SDLK_SPACE, SDLK_RIGHT, get_time, SDL_KEYUP, SDLK_a
 import math
 
 
-# define event check functions
 def space_down(e):
     return e[0] == 'INPUT' and e[1].type == SDL_KEYDOWN and e[1].key == SDLK_SPACE
 
 
+def A_down(e):
+    return e[0] == 'INPUT' and e[1].type == SDL_KEYDOWN and e[1].key == SDLK_a
+
+
 def time_out(e):
-    return e[0] == 'TIME OUT'
+    return e[0] == 'TIME_OUT'
 
 
 def right_down(e):
@@ -32,12 +35,15 @@ def left_up(e):
 class Idle:
 
     @staticmethod
-    def enter(boy):
+    def enter(boy, e):
         if boy.action == 0:
             boy.action = 2
         elif boy.action == 1:
             boy.action = 3
-        boy.idle_start_time = get_time()
+        boy.dir = 0
+        boy.frame = 0
+        boy.wait_time = get_time()
+        pass
 
     @staticmethod
     def exit(boy, e):
@@ -46,35 +52,12 @@ class Idle:
     @staticmethod
     def do(boy):
         boy.frame = (boy.frame + 1) % 8
-        if get_time() - boy.idle_start_time > 3:
+        if get_time() - boy.wait_time > 3:
             boy.state_machine.handle_event(('TIME_OUT', 0))
 
     @staticmethod
     def draw(boy):
-        boy.image.clip.draw(boy.frame * 100, boy.action * 100, 100, 100, boy.x, boy.y)
-
-
-class Run:
-
-    @staticmethod
-    def enter(boy):
-        if right_down(e) or left_up(e):
-            boy.dir, boy.action = 1, 1
-        elif left_down(e) or left_up(e):
-            boy.dir, boy.action = -1, 0
-
-    @staticmethod
-    def exit(boy, e):
-        pass
-
-    @staticmethod
-    def do(boy):
-        boy.frame = (boy.frame + 1) % 8
-        boy.x += boy.dir * 5
-
-    @staticmethod
-    def draw(boy):
-        boy.image.clip.draw(boy.frame * 100, boy.action * 100, 100, 100, boy.x, boy.y)
+        boy.image.clip_draw(boy.frame * 100, boy.action * 100, 100, 100, boy.x, boy.y)
 
 
 class Sleep:
@@ -94,35 +77,82 @@ class Sleep:
     @staticmethod
     def draw(boy):
         if boy.action == 2:
-            boy.image.clip_commposite_draw(boy.frame * 100, 200, 100, 100, -math.pi / 2, ' ', boy.x - 25,
-                                           boy.y - 25, 100, 100)
+            boy.image.clip_composite_draw(boy.frame * 100, 200, 100, 100, -3.141592 / 2, '', boy.x + 25, boy.y - 25,
+                                          100, 100)
         else:
-            boy.image.clip_commposite_draw(boy.frame * 100, 300, 100, 100, math.pi / 2, '   ', boy.x - 25,
-                                           boy.y - 25, 100, 100)
+            boy.image.clip_composite_draw(boy.frame * 100, 300, 100, 100, 3.141592 / 2, '', boy.x - 25, boy.y - 25, 100,
+                                          100)
+
+
+class Run:
+    @staticmethod
+    def enter(boy, e):
+        if right_down(e) or left_up(e):  # 오른쪽으로 RUN
+            boy.dir, boy.action = 1, 1
+        elif left_down(e) or right_up(e):  # 왼쪽으로 RUN
+            boy.dir, boy.action = -1, 0
+
+    @staticmethod
+    def exit(boy, e):
+        pass
+
+    @staticmethod
+    def do(boy):
+        boy.frame = (boy.frame + 1) % 8
+        boy.x += boy.dir * 5
+        pass
+
+    @staticmethod
+    def draw(boy):
+        boy.image.clip_draw(boy.frame * 100, boy.action * 100, 100, 100, boy.x, boy.y)
+
+
+class AutoRun:
+    @staticmethod
+    def enter(boy, e):
+        if boy.action == 3:  # 오른쪽으로 RUN
+            boy.dir, boy.action = 1, 1
+        elif boy.action == 1:  # 왼쪽으로 RUN
+            boy.dir, boy.action = -1, 0
+        boy.Run_time = get_time()
+
+    @staticmethod
+    def exit(boy, e):
+        pass
+
+    @staticmethod
+    def do(boy):
+        boy.frame = (boy.frame + 1) % 8
+        boy.x += boy.dir * 10
+        pass
+
+    @staticmethod
+    def draw(boy):
+        boy.image.clip_draw(boy.frame * 100, boy.action * 100, 100, 100, boy.x, boy.y, 200, 200)
 
 
 class StateMachine:
     def __init__(self, boy):
-        self.cur_state = Idle
         self.boy = boy
+        self.cur_state = Idle
         self.transitions = {
             Idle: {right_down: Run, left_down: Run, left_up: Run, right_up: Run, time_out: Sleep},
             Run: {right_down: Idle, left_down: Idle, right_up: Idle, left_up: Idle},
             Sleep: {right_down: Run, left_down: Run, right_up: Run, left_up: Run, space_down: Idle},
-
+            AutoRun: {time_out: Idle}
         }
 
     def handle_event(self, e):
-        for check_event, next_state in self.transitions[self_cur_state].items():
+        for check_event, next_state in self.transitions[self.cur_state].items():
             if check_event(e):
                 self.cur_state.exit(self.boy, e)
                 self.cur_state = next_state
                 self.cur_state.enter(self.boy, e)
                 return True
-            return False
+        return False
 
     def start(self):
-        self.cur_state.enter(self.boy, ('None', 0))
+        self.cur_state.enter(self.boy, ('NONE', 0))
 
     def update(self):
         self.cur_state.do(self.boy)
@@ -147,4 +177,4 @@ class Boy:
         self.state_machine.handle_event(('INPUT', event))
 
     def draw(self):
-        self.state_machine.draw(self)
+        self.state_machine.draw()
