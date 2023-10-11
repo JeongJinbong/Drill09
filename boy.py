@@ -124,6 +124,9 @@ class AutoRun:
     def do(boy):
         boy.frame = (boy.frame + 1) % 8
         boy.x += boy.dir * 10
+        boy.y = 120
+        if get_time() - boy.wait_time > 5:
+            boy.state_machine.handle_event(('TIME_OUT', 0))
         pass
 
     @staticmethod
@@ -136,7 +139,7 @@ class StateMachine:
         self.boy = boy
         self.cur_state = Idle
         self.transitions = {
-            Idle: {right_down: Run, left_down: Run, left_up: Run, right_up: Run, time_out: Sleep},
+            Idle: {right_down: Run, left_down: Run, left_up: Run, right_up: Run, time_out: Sleep, A_down: AutoRun},
             Run: {right_down: Idle, left_down: Idle, right_up: Idle, left_up: Idle},
             Sleep: {right_down: Run, left_down: Run, right_up: Run, left_up: Run, space_down: Idle},
             AutoRun: {time_out: Idle}
